@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>क्लाउड डायरेक्ट वेबसाइट बुकमार्क 🌐</title>
+    <!-- Firebase SDK (v9 Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; padding: 20px; margin: 0; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; background: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #38bdf8; font-size: 24px; margin-bottom: 20px; }
+        h2 { font-size: 18px; color: #38bdf8; margin-top: 25px; }
+        label { font-size: 14px; color: #94a3b8; display: block; margin-top: 12px; margin-bottom: 4px; }
+        input[type="text"], input[type="url"] {
+            width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-size: 15px; margin-bottom: 5px;
+        }
+        button { width: 100%; background: #0284c7; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.2s; }
+        button:hover { background: #0369a1; }
+        .card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-top: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .site-info { word-break: break-all; flex: 1; margin-right: 15px; }
+        .visit-btn { background: #10b981; color: white; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; display: inline-block; white-space: nowrap; }
+        .visit-btn:hover { background: #059669; }
+        .status-msg { font-size: 13px; color: #f59e0b; text-align: center; margin-top: 8px; }
+        .delete-btn { background: #ef4444; margin-top: 8px; padding: 4px 10px; font-size: 11px; width: auto; border: none; color: white; border-radius: 4px; cursor: pointer; }
+        .search-box { margin-bottom: 15px; background: #0f172a; border: 1px solid #0284c7; }
+        .id-box { background: #0f172a; border: 1px dashed #38bdf8; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌐 क्लाउड डायरेक्ट वेबसाइट्स</h1>
+
+    <div class="id-box">
+        <span style="color: #94a3b8; display: block; margin-bottom: 5px;">🔑 आपकी क्लाउड आईडी:</span>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="userCloudId" readonly style="margin: 0; background: #1e293b; color: #4ade80; font-weight: bold;">
+            <button onclick="changeCloudId()" style="margin: 0; width: auto; background: #334155; font-size: 12px; padding: 0 12px;">आईडी बदलें</button>
+        </div>
+    </div>
+
+    <h2>नया वेबसाइट लिंक सेव करें</h2>
+    <label>ऐप या वेबसाइट का नाम (जैसे: Instagram):</label>
+    <input type="text" id="siteName" placeholder="जैसे: Instagram">
+
+    <label>वेबसाइट का लिंक (URL):</label>
+    <input type="url" id="siteUrl" placeholder="जैसे: https://www.instagram.com">
+
+    <button onclick="saveWebsiteToCloud()">💾 सीधे सर्वर पर सेव करें</button>
+    <div id="app-msg" class="status-msg"></div>
+
+    <h2>आपकी सेव की गई वेबसाइट्स:</h2>
+    
+    <input type="text" id="searchInput" class="search-box" placeholder="🔍 नाम से खोजें (जैसे Instagram)..." oninput="renderWebsites()">
+    
+    <div id="websitesContainer">लोड हो रहा है...</div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB7YVFJHkQ8yRHJWIWtmsGL_SiDGJ15hxs",
+        authDomain: "timecapsule-dd364.firebaseapp.com",
+        databaseURL: "https://timecapsule-dd364-default-rtdb.firebaseio.com",
+        projectId: "timecapsule-dd364",
+        storageBucket: "timecapsule-dd364.firebasestorage.app",
+        messagingSenderId: "495222564816",
+        appId: "1:495222564816:web:879efe84eb6c1dfc9dbbd5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let myCloudId = localStorage.getItem('my_unique_cloud_id');
+    if (!myCloudId || myCloudId === "undefined" || myCloudId === "null") {
+        myCloudId = 'user_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+        localStorage.setItem('my_unique_cloud_id', myCloudId);
+    }
+    
+    // तुरंत बॉक्स में आईडी दिखाने के लिए
+    document.getElementById('userCloudId').value = myCloudId;
+
+    let allWebsitesData = null;
+
+    function changeCloudId() {
+        let newId = prompt("अपनी पुरानी क्लाउड आईडी यहाँ दर्ज करें:", myCloudId);
+        if (newId && newId.trim() !== "") {
+            myCloudId = newId.trim();
+            localStorage.setItem('my_unique_cloud_id', myCloudId);
+            document.getElementById('userCloudId').value = myCloudId;
+            initCloudSync();
+            alert("क्लाउड आईडी बदल दी गई है!");
+        }
+    }
+
+    function saveWebsiteToCloud() {
+        let name = document.getElementById('siteName').value.trim();
+        let url = document.getElementById('siteUrl').value.trim();
+        const msgBox = document.getElementById('app-msg');
+
+        if (!name || !url) {
+            alert('कृपया नाम और लिंक दोनों भरें!');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+
+        const sitesRef = database.ref('direct_websites/' + myCloudId);
+        sitesRef.push({ name, url, timestamp: Date.now() }).then(() => {
+            document.getElementById('siteName').value = '';
+            document.getElementById('siteUrl').value = '';
+            msgBox.innerText = "वेबसाइट सीधे सर्वर पर सेव हो गई! 🌐";
+            setTimeout(() => { msgBox.innerText = ''; }, 3000);
+        });
+    }
+
+    function initCloudSync() {
+        const sitesRef = database.ref('direct_websites/' + myCloudId);
+        sitesRef.on('value', (snapshot) => {
+            allWebsitesData = snapshot.val();
+            renderWebsites();
+        });
+    }
+
+    function renderWebsites() {
+        const container = document.getElementById('websitesContainer');
+        const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+        const data = allWebsitesData;
+
+        if (!data) {
+            container.innerHTML = '<p style="color: #64748b; font-size: 14px;">अभी सर्वर पर कोई वेबसाइट सेव नहीं है।</p>';
+            return;
+        }
+
+        let items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+
+        if (searchQuery !== '') {
+            items = items.filter(item => item.name.toLowerCase().includes(searchQuery));
+        }
+
+        if (items.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; font-size: 14px;">कोई मैचिंग वेबसाइट नहीं मिली।</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        items.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="site-info">
+                    <div style="color: #38bdf8; font-weight: bold; font-size: 16px;">${escapeHtml(item.name)}</div>
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 3px; word-break: break-all;">${escapeHtml(item.url)}</div>
+                    <button class="delete-btn" onclick="deleteWebsite('${item.id}')">हटाएं</button>
+                </div>
+                <a href="${escapeHtml(item.url)}" target="_blank" class="visit-btn">🌐 विजिट करें</a>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function deleteWebsite(siteId) {
+        if (confirm("क्या आप वाकई इस वेबसाइट को हटाना चाहते हैं?")) {
+            database.ref('direct_websites/' + myCloudId + '/' + siteId).remove();
+        }
+    }
+
+    function escapeHtml(text) {
+        return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+    }
+
+    initCloudSync();
+</script>
+
+</body>
+</html>

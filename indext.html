@@ -1,0 +1,498 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>स्मार्ट टाइम कैप्सूल & सिक्योर पासवर्ड सेफ ⏳</title>
+    <!-- Firebase SDK (v9 Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; padding: 20px; margin: 0; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; background: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #38bdf8; font-size: 24px; margin-bottom: 20px; }
+        h2 { font-size: 18px; color: #38bdf8; margin-top: 25px; }
+        label { font-size: 14px; color: #94a3b8; display: block; margin-top: 12px; margin-bottom: 4px; }
+        input[type="text"], input[type="number"], input[type="password"], input[type="email"], select, textarea {
+            width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-size: 15px; margin-bottom: 5px;
+        }
+        textarea { height: 100px; resize: vertical; }
+        .lock-inputs { display: flex; gap: 10px; margin-top: 5px; }
+        .lock-inputs input, .lock-inputs select { flex: 1; }
+        button { width: 100%; background: #0284c7; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.2s; }
+        button:hover { background: #0369a1; }
+        .card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-top: 15px; }
+        .timer { font-size: 16px; color: #f59e0b; font-weight: bold; margin-top: 8px; }
+        .unlocked-content { color: #4ade80; background: #1e293b; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 14px; line-height: 1.6; word-break: break-all; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .copy-btn { background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin: 0; width: auto; }
+        .copy-btn:hover { background: #059669; }
+        .delete-btn { background: #ef4444; margin-top: 10px; padding: 6px 12px; font-size: 12px; width: auto; }
+        .status-msg { font-size: 13px; color: #f59e0b; text-align: center; margin-top: 8px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; background: #334155; padding: 10px; border-radius: 8px; border: none; color: #fff; font-weight: bold; cursor: pointer; margin: 0; }
+        .tab-btn.active { background: #0284c7; }
+        .section-box { display: none; }
+        .section-box.active { display: block; }
+        .search-box { margin-bottom: 15px; background: #0f172a; border: 1px solid #0284c7; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #1e293b; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #334155; }
+        .locked-area { text-align: center; padding: 20px; background: #0f172a; border: 1px dashed #334155; border-radius: 8px; margin-top: 15px; }
+        .forgot-link { display: block; margin-top: 10px; color: #38bdf8; font-size: 13px; cursor: pointer; text-decoration: underline; background: none; border: none; width: auto; margin-left: auto; margin-right: auto; padding: 0; }
+    </style>
+</head>
+<body>
+
+<!-- पासवर्ड वेरिफिकेशन / क्रिएशन / फॉरगेट मॉडल -->
+<div id="passwordModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3 id="modalTitle" style="color: #38bdf8; margin-top: 0;">पासवर्ड दर्ज करें</h3>
+        <p id="modalDesc" style="font-size: 13px; color: #94a3b8;"></p>
+        <input type="text" id="modalPasswordInput" placeholder="यहाँ लिखें...">
+        <button onclick="submitModalPassword()">पुष्टि करें (Confirm)</button>
+        <div id="modalMsg" class="status-msg"></div>
+    </div>
+</div>
+
+<div class="container">
+    <h1>स्मार्ट टाइम कैप्सूल ⏳</h1>
+
+    <!-- टैब मेनू -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('capsule')">टाइम कैप्सूल मैसेज</button>
+        <button class="tab-btn" onclick="switchTab('vault')">🔐 सिक्योर पासवर्ड सेफ</button>
+    </div>
+
+    <!-- 1. टाइम कैप्सूल सेक्शन -->
+    <div id="capsule-section" class="section-box active">
+        <label for="message">अपना टेक्स्ट/मैसेज लिखें (60 साल तक सुरक्षित):</label>
+        <textarea id="message" placeholder="यहाँ अपना सीक्रेट मैसेज, नोट्स या यादें लिखें..."></textarea>
+
+        <label>कितने समय के लिए लॉक करना है?</label>
+        <div class="lock-inputs">
+            <input type="number" id="timeValue" min="1" value="1">
+            <select id="timeUnit">
+                <option value="seconds">सेकंड (Seconds)</option>
+                <option value="minutes">मिनट (Minutes)</option>
+                <option value="hours">घंटा (Hours)</option>
+                <option value="days">दिन (Days)</option>
+                <option value="weeks">हफ्ता (Weeks)</option>
+                <option value="months">महीना (Months)</option>
+                <option value="years" selected>साल (Years)</option>
+            </select>
+        </div>
+
+        <button onclick="requestAction('capsule')">🔒 सर्वर पर टाइम-लॉक करें</button>
+        <div id="capsule-msg" class="status-msg"></div>
+
+        <h2>आपकी सेव की गई कैप्सूल्स:</h2>
+        <div id="capsulesContainer">लोड हो रहा है...</div>
+    </div>
+
+    <!-- 2. पासवर्ड और अकाउंट सेफ सेक्शन -->
+    <div id="vault-section" class="section-box">
+        <label>ऐप/वेबसाइट का नाम (जैसे: Instagram, Free Fire):</label>
+        <input type="text" id="appName" placeholder="ऐप का नाम दर्ज करें">
+
+        <label>यूजरनेम / फोन नंबर / ईमेल ID:</label>
+        <input type="password" id="appUser" placeholder="गोपनीय यूजरनेम या ईमेल दर्ज करें">
+
+        <label>पासवर्ड:</label>
+        <input type="password" id="appPass" placeholder="गोपनीय पासवर्ड दर्ज करें">
+
+        <label>कितने समय बाद देखना चाहते हैं?</label>
+        <div class="lock-inputs">
+            <input type="number" id="vaultTimeValue" min="1" value="1">
+            <select id="vaultTimeUnit">
+                <option value="seconds">सेकंड</option>
+                <option value="minutes">मिनट</option>
+                <option value="hours">घंटा</option>
+                <option value="days">दिन</option>
+                <option value="weeks">हफ्ता</option>
+                <option value="months">महीना</option>
+                <option value="years" selected>साल (60 साल तक)</option>
+            </select>
+        </div>
+
+        <button onclick="requestAction('vault')">🛡️ अकाउंट डेटा सुरक्षित लॉक करें</button>
+        <div id="vault-msg" class="status-msg"></div>
+
+        <h2>आपके सुरक्षित अकाउंट्स:</h2>
+        
+        <!-- लॉक एरिया -->
+        <div id="vault-locked-area" class="locked-area">
+            <p style="color: #94a3b8; font-size: 14px; margin-top:0;">अकाउंट्स लिस्ट और सर्च बॉक्स सुरक्षा के लिए लॉक हैं।</p>
+            <button onclick="unlockVaultSection()" style="width: auto; background: #8b5cf6; padding: 10px 20px;">🔐 अकाउंट्स लिस्ट अनलॉक करें</button>
+            <button class="forgot-link" onclick="startForgotPassword()">🔄 फॉरगेट पासवर्ड (सुरक्षित रीसेट)</button>
+        </div>
+
+        <!-- अनलॉक्ड एरिया -->
+        <div id="vault-unlocked-area" style="display: none; margin-top: 15px;">
+            <button onclick="lockVaultSection()" style="width: auto; background: #ef4444; padding: 6px 12px; margin-bottom: 15px; font-size: 12px; float: right;">🔒 वापस लॉक करें</button>
+            <div style="clear: both;"></div>
+            
+            <input type="text" id="searchVaultInput" class="search-box" placeholder="🔍 ऐप या वेबसाइट का नाम खोजें (जैसे Instagram)..." oninput="filterVaultData()">
+            <div id="vaultContainer">लोड हो रहा है...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB7YVFJHkQ8yRHJWIWtmsGL_SiDGJ15hxs",
+        authDomain: "timecapsule-dd364.firebaseapp.com",
+        databaseURL: "https://timecapsule-dd364-default-rtdb.firebaseio.com",
+        projectId: "timecapsule-dd364",
+        storageBucket: "timecapsule-dd364.firebasestorage.app",
+        messagingSenderId: "495222564816",
+        appId: "1:495222564816:web:879efe84eb6c1dfc9dbbd5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const capsulesRef = database.ref('public_capsules');
+    const vaultRef = database.ref('public_vault');
+
+    let pendingAction = null;
+    let masterPassword = localStorage.getItem('app_master_pass') || '';
+    let latestVaultData = null;
+    let isVaultUnlocked = false; 
+    let modeType = 'normal'; 
+    let generatedOtp = '';
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.section-box').forEach(box => box.classList.remove('active'));
+
+        if (tab === 'capsule') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('capsule-section').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('vault-section').classList.add('active');
+        }
+    }
+
+    function getDurationMs(value, unit) {
+        const second = 1000;
+        const minute = second * 60;
+        const hour = minute * 60;
+        const day = hour * 24;
+
+        switch (unit) {
+            case 'seconds': return value * second;
+            case 'minutes': return value * minute;
+            case 'hours': return value * hour;
+            case 'days': return value * day;
+            case 'weeks': return value * day * 7;
+            case 'months': return value * day * 30;
+            case 'years': return value * day * 365;
+            default: return value * day * 365;
+        }
+    }
+
+    function requestAction(actionType) {
+        pendingAction = actionType;
+        const modal = document.getElementById('passwordModal');
+        const title = document.getElementById('modalTitle');
+        const desc = document.getElementById('modalDesc');
+        document.getElementById('modalPasswordInput').value = '';
+        document.getElementById('modalMsg').innerText = '';
+
+        if (!masterPassword) {
+            modeType = 'create';
+            title.innerText = "नया मास्टर पासवर्ड बनाएं";
+            desc.innerText = "सेफ को सुरक्षित करने के लिए मास्टर पासवर्ड सेट करें:";
+        } else {
+            modeType = 'verify_action';
+            title.innerText = "मास्टर पासवर्ड दर्ज करें";
+            desc.innerText = "नया डेटा लॉक करने के लिए अपना मास्टर पासवर्ड दर्ज करें:";
+        }
+        modal.style.display = 'flex';
+    }
+
+    function unlockVaultSection() {
+        if (!masterPassword) {
+            alert("डेटा देखने के लिए पहले कोई अकाउंट सेव करके मास्टर पासवर्ड सेट करें!");
+            return;
+        }
+        modeType = 'verify_vault';
+        const modal = document.getElementById('passwordModal');
+        document.getElementById('modalTitle').innerText = "मास्टर पासवर्ड दर्ज करें";
+        document.getElementById('modalDesc').innerText = "अपने सुरक्षित अकाउंट्स देखने के लिए मास्टर पासवर्ड दर्ज करें:";
+        document.getElementById('modalPasswordInput').value = '';
+        document.getElementById('modalMsg').innerText = '';
+        modal.style.display = 'flex';
+    }
+
+    function startForgotPassword() {
+        modeType = 'forgot_request';
+        const modal = document.getElementById('passwordModal');
+        document.getElementById('modalTitle').innerText = "सुरक्षा सत्यापन (Security Check)";
+        document.getElementById('modalDesc').innerText = "पासवर्ड रीसेट करने के लिए अपनी सीक्रेट रिकवरी की (Recovery Key) या सुरक्षित कोड दर्ज करें:";
+        document.getElementById('modalPasswordInput').value = ""; // पूरी तरह खाली, कोई फिक्स कोड नहीं
+        document.getElementById('modalMsg').innerText = "";
+        modal.style.display = 'flex';
+    }
+
+    function submitModalPassword() {
+        const inputVal = document.getElementById('modalPasswordInput').value.trim();
+        const msgBox = document.getElementById('modalMsg');
+
+        if (!inputVal) {
+            msgBox.innerText = "कृपया मान दर्ज करें!";
+            return;
+        }
+
+        if (modeType === 'create') {
+            masterPassword = inputVal;
+            localStorage.setItem('app_master_pass', masterPassword);
+            document.getElementById('passwordModal').style.display = 'none';
+            executePendingAction();
+        } 
+        else if (modeType === 'verify_action') {
+            if (inputVal === masterPassword) {
+                document.getElementById('passwordModal').style.display = 'none';
+                executePendingAction();
+            } else {
+                msgBox.innerText = "गलत मास्टर पासवर्ड!";
+            }
+        } 
+        else if (modeType === 'verify_vault') {
+            if (inputVal === masterPassword) {
+                document.getElementById('passwordModal').style.display = 'none';
+                isVaultUnlocked = true;
+                document.getElementById('vault-locked-area').style.display = 'none';
+                document.getElementById('vault-unlocked-area').style.display = 'block';
+                renderVault(latestVaultData);
+            } else {
+                msgBox.innerText = "गलत मास्टर पासवर्ड!";
+            }
+        }
+        else if (modeType === 'forgot_request') {
+            // यहाँ सुरक्षा के लिए आप अपनी खुद की सेट की गई गुप्त चाबी (Secret Recovery Phrase) सेट कर सकते हैं
+            // ताकि कोई दूसरा अनजान व्यक्ति आपका डेटा न चुरा सके।
+            if (inputVal === "MY_SECRET_KEY_2026" || inputVal === masterPassword) {
+                modeType = 'forgot_new';
+                document.getElementById('modalTitle').innerText = "नया मास्टर पासवर्ड बनाएं";
+                document.getElementById('modalDesc').innerText = "सत्यापन सफल! अब अपना नया मास्टर पासवर्ड दर्ज करें:";
+                document.getElementById('modalPasswordInput').value = '';
+                msgBox.style.color = "#4ade80";
+                msgBox.innerText = "✓ सत्यापन सफल रहा!";
+            } else {
+                msgBox.style.color = "#ef4444";
+                msgBox.innerText = "अमान्य रिकवरी की या कोड!";
+            }
+        }
+        else if (modeType === 'forgot_new') {
+            masterPassword = inputVal;
+            localStorage.setItem('app_master_pass', masterPassword);
+            document.getElementById('passwordModal').style.display = 'none';
+            alert("नया मास्टर पासवर्ड सफलतापूर्वक सेट हो गया है!");
+        }
+    }
+
+    function executePendingAction() {
+        if (pendingAction === 'capsule') {
+            saveCapsuleToCloud();
+        } else if (pendingAction === 'vault') {
+            saveVaultToCloud();
+        }
+    }
+
+    function saveCapsuleToCloud() {
+        const text = document.getElementById('message').value.trim();
+        const value = parseFloat(document.getElementById('timeValue').value);
+        const unit = document.getElementById('timeUnit').value;
+        const msgBox = document.getElementById('capsule-msg');
+
+        if (!text) { alert('कृपया कुछ टेक्स्ट दर्ज करें!'); return; }
+        if (isNaN(value) || value <= 0) { alert('कृपया सही समय दर्ज करें!'); return; }
+
+        const unlockTime = new Date().getTime() + getDurationMs(value, unit);
+
+        capsulesRef.push({ text, unlockTime }).then(() => {
+            document.getElementById('message').value = '';
+            msgBox.innerText = "सफलतापूर्वक सर्वर पर लॉक हो गया! 🔒";
+            setTimeout(() => { msgBox.innerText = ''; }, 3000);
+        });
+    }
+
+    function saveVaultToCloud() {
+        const appName = document.getElementById('appName').value.trim();
+        const appUser = document.getElementById('appUser').value.trim();
+        const appPass = document.getElementById('appPass').value.trim();
+        const value = parseFloat(document.getElementById('vaultTimeValue').value);
+        const unit = document.getElementById('vaultTimeUnit').value;
+        const msgBox = document.getElementById('vault-msg');
+
+        if (!appName || !appUser || !appPass) { alert('कृपया सभी फील्ड भरें!'); return; }
+        if (isNaN(value) || value <= 0) { alert('कृपया सही समय दर्ज करें!'); return; }
+
+        const unlockTime = new Date().getTime() + getDurationMs(value, unit);
+
+        vaultRef.push({ appName, appUser, appPass, unlockTime }).then(() => {
+            document.getElementById('appName').value = '';
+            document.getElementById('appUser').value = '';
+            document.getElementById('appPass').value = '';
+            msgBox.innerText = "अकाउंट डेटा सुरक्षित रूप से लॉक हो गया! 🛡️";
+            setTimeout(() => { msgBox.innerText = ''; }, 3000);
+        });
+    }
+
+    function deleteCapsule(id) {
+        if (confirm("क्या आप वाकई इसे हटाना चाहते हैं?")) { capsulesRef.child(id).remove(); }
+    }
+
+    function deleteVaultItem(id) {
+        if (confirm("क्या आप वाकई इसे हटाना चाहते हैं?")) { vaultRef.child(id).remove(); }
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("डेटा सफलतापूर्वक क्लिपबोर्ड पर कॉपी हो गया है!");
+        }).catch(err => {
+            alert("कॉपी करने में विफल: " + err);
+        });
+    }
+
+    function lockVaultSection() {
+        isVaultUnlocked = false;
+        document.getElementById('vault-locked-area').style.display = 'block';
+        document.getElementById('vault-unlocked-area').style.display = 'none';
+        document.getElementById('vaultContainer').innerHTML = ''; 
+    }
+
+    capsulesRef.on('value', (snapshot) => { renderCapsules(snapshot.val()); });
+    
+    vaultRef.on('value', (snapshot) => { 
+        latestVaultData = snapshot.val();
+        renderVault(latestVaultData); 
+    });
+
+    function renderCapsules(data) {
+        const container = document.getElementById('capsulesContainer');
+        if (!data) { container.innerHTML = '<p style="color: #64748b; font-size: 14px;">अभी कोई लॉक मैसेज नहीं है।</p>'; return; }
+
+        const capsules = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        const now = new Date().getTime();
+        container.innerHTML = '';
+
+        capsules.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const diff = item.unlockTime - now;
+
+            if (diff <= 0) {
+                const safeText = escapeHtml(item.text);
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div style="color: #4ade80; font-weight: bold;">🔓 अनलॉक्ड (Unlocked)</div>
+                        <button class="copy-btn" onclick="copyText(${JSON.stringify(item.text)})">📋 कॉपी करें</button>
+                    </div>
+                    <div class="unlocked-content">${safeText}</div>
+                    <button class="delete-btn" onclick="deleteCapsule('${item.id}')">हटाएं</button>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div style="color: #ef4444; font-weight: bold;">🔒 टाइम-लॉक है</div>
+                    <div class="timer">${formatRemainingTime(diff)}</div>
+                `;
+            }
+            container.appendChild(card);
+        });
+    }
+
+    function filterVaultData() {
+        renderVault(latestVaultData);
+    }
+
+    function renderVault(data) {
+        if (!isVaultUnlocked) return; 
+
+        const container = document.getElementById('vaultContainer');
+        const searchQuery = document.getElementById('searchVaultInput').value.toLowerCase().trim();
+
+        if (!data) { container.innerHTML = '<p style="color: #64748b; font-size: 14px;">अभी कोई सेव अकाउंट नहीं है।</p>'; return; }
+
+        let items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+
+        if (searchQuery !== '') {
+            items = items.filter(item => item.appName.toLowerCase().includes(searchQuery));
+        }
+
+        if (items.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; font-size: 14px;">कोई मैचिंग अकाउंट नहीं मिला।</p>';
+            return;
+        }
+
+        const now = new Date().getTime();
+        container.innerHTML = '';
+
+        items.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const diff = item.unlockTime - now;
+
+            if (diff <= 0) {
+                const fullDetails = `ऐप/वेबसाइट: ${item.appName}\nयूजरनेम/ईमेल/फोन: ${item.appUser}\nपासवर्ड: ${item.appPass}`;
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div style="color: #4ade80; font-weight: bold;">🔓 ${escapeHtml(item.appName)}</div>
+                        <div>
+                            <button class="copy-btn" onclick="copyText(${JSON.stringify(fullDetails)})">📋 कॉपी करें</button>
+                        </div>
+                    </div>
+                    <div class="unlocked-content">
+                        <strong>यूजरनेम/ईमेल/फोन:</strong> ${escapeHtml(item.appUser)}<br>
+                        <strong>पासवर्ड:</strong> ${escapeHtml(item.appPass)}
+                    </div>
+                    <button class="delete-btn" onclick="deleteVaultItem('${item.id}')">हटाएं</button>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div style="color: #ef4444; font-weight: bold;">🔒 ${escapeHtml(item.appName)} (लॉक है)</div>
+                    <div class="timer">${formatRemainingTime(diff)}</div>
+                `;
+            }
+            container.appendChild(card);
+        });
+    }
+
+    function formatRemainingTime(ms) {
+        const seconds = Math.floor((ms / 1000) % 60);
+        const minutes = Math.floor((ms / (1000 * 60)) % 60);
+        const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+        const years = Math.floor(days / 365);
+        const remDays = days % 365;
+
+        let result = [];
+        if (years > 0) result.push(`${years} साल`);
+        if (remDays > 0) result.push(`${remDays} दिन`);
+        if (hours > 0) result.push(`${hours} घंटे`);
+        if (minutes > 0) result.push(`${minutes} मिनट`);
+        result.push(`${seconds} सेकंड`);
+
+        return 'खुलने में बाकी: ' + result.join(' ');
+    }
+
+    function escapeHtml(text) {
+        return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+    }
+
+    setInterval(() => {
+        capsulesRef.once('value', s => renderCapsules(s.val()));
+        vaultRef.once('value', s => {
+            latestVaultData = s.val();
+            if(isVaultUnlocked) {
+                renderVault(latestVaultData);
+            }
+        });
+    }, 1000);
+</script>
+
+</body>
+</html>
