@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>स्मार्ट टाइम कैप्सूल & सिक्योर पासवर्ड सेफ ⏳</title>
+    <!-- Firebase SDK (v9 Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; padding: 20px; margin: 0; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; background: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #38bdf8; font-size: 24px; margin-bottom: 20px; }
+        h2 { font-size: 18px; color: #38bdf8; margin-top: 25px; }
+        input[type="password"] {
+            width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-size: 15px; margin-bottom: 5px;
+        }
+        button { width: 100%; background: #0284c7; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.2s; }
+        button:hover { background: #0369a1; }
+        .card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-top: 15px; }
+        .timer { font-size: 14px; color: #f59e0b; font-weight: bold; margin-top: 8px; }
+        .unlocked-content { color: #4ade80; background: #1e293b; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 14px; line-height: 1.6; word-break: break-all; border: 1px solid #334155; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .copy-btn { background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin: 0; width: auto; }
+        .copy-btn:hover { background: #059669; }
+        .delete-btn { background: #ef4444; margin-top: 10px; padding: 6px 12px; font-size: 12px; width: auto; }
+        .status-msg { font-size: 13px; color: #f59e0b; text-align: center; margin-top: 8px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; background: #334155; padding: 10px; border-radius: 8px; border: none; color: #fff; font-weight: bold; cursor: pointer; margin: 0; }
+        .tab-btn.active { background: #0284c7; }
+        .section-box { display: none; }
+        .section-box.active { display: block; }
+        .search-box { margin-bottom: 15px; background: #0f172a; border: 1px solid #0284c7; width: 100%; padding: 12px; color: #fff; border-radius: 8px; font-size: 15px;}
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #1e293b; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #334155; }
+        .locked-area { text-align: center; padding: 20px; background: #0f172a; border: 1px dashed #334155; border-radius: 8px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<!-- पासवर्ड वेरिफिकेशन मॉडल -->
+<div id="passwordModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3 style="color: #38bdf8; margin-top: 0;">मास्टर पासवर्ड दर्ज करें</h3>
+        <p style="font-size: 13px; color: #94a3b8;">डेटा देखने के लिए अपना पासवर्ड दर्ज करें:</p>
+        <input type="password" id="modalPasswordInput" placeholder="पासवर्ड लिखें...">
+        <button onclick="submitModalPassword()">पुष्टि करें (Confirm)</button>
+        <div id="modalMsg" class="status-msg"></div>
+    </div>
+</div>
+
+<div class="container">
+    <h1>स्मार्ट टाइम कैप्सूल ⏳</h1>
+
+    <!-- टैब मेनू -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('capsule')">टाइम कैप्सूल मैसेज (लॉक)</button>
+        <button class="tab-btn" onclick="switchTab('vault')">🔐 सिक्योर पासवर्ड सेफ (लॉक)</button>
+    </div>
+
+    <!-- 1. टाइम कैप्सूल सेक्शन -->
+    <div id="capsule-section" class="section-box active">
+        <h2>सेव की गई कैप्सूल्स:</h2>
+        
+        <div id="capsule-locked-area" class="locked-area">
+            <p style="color: #94a3b8; font-size: 14px; margin-top:0;">कैप्सूल मैसेज देखने के लिए पासवर्ड आवश्यक है।</p>
+            <button onclick="openPasswordModal('capsule')" style="width: auto; background: #8b5cf6; padding: 10px 20px;">🔐 कैप्सूल अनलॉक करें</button>
+        </div>
+
+        <div id="capsule-unlocked-area" style="display: none; margin-top: 15px;">
+            <button onclick="lockSection('capsule')" style="width: auto; background: #ef4444; padding: 6px 12px; margin-bottom: 15px; font-size: 12px; float: right;">🔒 वापस लॉक करें</button>
+            <div style="clear: both;"></div>
+            <div id="capsulesContainer">लोड हो रहा है...</div>
+        </div>
+    </div>
+
+    <!-- 2. पासवर्ड और अकाउंट सेफ सेक्शन -->
+    <div id="vault-section" class="section-box">
+        <h2>आपके सुरक्षित अकाउंट्स:</h2>
+        
+        <div id="vault-locked-area" class="locked-area">
+            <p style="color: #94a3b8; font-size: 14px; margin-top:0;">अकाउंट्स देखने के लिए पासवर्ड आवश्यक है।</p>
+            <button onclick="openPasswordModal('vault')" style="width: auto; background: #8b5cf6; padding: 10px 20px;">🔐 अकाउंट्स अनलॉक करें</button>
+        </div>
+
+        <div id="vault-unlocked-area" style="display: none; margin-top: 15px;">
+            <button onclick="lockSection('vault')" style="width: auto; background: #ef4444; padding: 6px 12px; margin-bottom: 15px; font-size: 12px; float: right;">🔒 वापस लॉक करें</button>
+            <div style="clear: both;"></div>
+            
+            <input type="text" id="searchVaultInput" class="search-box" placeholder="🔍 ऐप का नाम खोजें..." oninput="filterVaultData()">
+            <div id="vaultContainer">लोड हो रहा है...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB7YVFJHkQ8yRHJWIWtmsGL_SiDGJ15hxs",
+        authDomain: "timecapsule-dd364.firebaseapp.com",
+        databaseURL: "https://timecapsule-dd364-default-rtdb.firebaseio.com",
+        projectId: "timecapsule-dd364",
+        storageBucket: "timecapsule-dd364.firebasestorage.app",
+        messagingSenderId: "495222564816",
+        appId: "1:495222564816:web:879efe84eb6c1dfc9dbbd5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const capsulesRef = database.ref('public_capsules');
+    const vaultRef = database.ref('public_vault');
+
+    const CORRECT_PASSWORD = "120080";
+    let latestCapsuleData = null;
+    let latestVaultData = null;
+    
+    let isCapsuleUnlocked = false;
+    let isVaultUnlocked = false;
+    let activeTarget = '';
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.section-box').forEach(box => box.classList.remove('active'));
+
+        if (tab === 'capsule') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('capsule-section').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('vault-section').classList.add('active');
+        }
+    }
+
+    function openPasswordModal(target) {
+        activeTarget = target;
+        document.getElementById('modalPasswordInput').value = '';
+        document.getElementById('modalMsg').innerText = '';
+        document.getElementById('passwordModal').style.display = 'flex';
+    }
+
+    function submitModalPassword() {
+        const inputVal = document.getElementById('modalPasswordInput').value.trim();
+        const msgBox = document.getElementById('modalMsg');
+
+        if (inputVal === CORRECT_PASSWORD) {
+            document.getElementById('passwordModal').style.display = 'none';
+            if (activeTarget === 'capsule') {
+                isCapsuleUnlocked = true;
+                document.getElementById('capsule-locked-area').style.display = 'none';
+                document.getElementById('capsule-unlocked-area').style.display = 'block';
+                renderCapsules(latestCapsuleData);
+            } else if (activeTarget === 'vault') {
+                isVaultUnlocked = true;
+                document.getElementById('vault-locked-area').style.display = 'none';
+                document.getElementById('vault-unlocked-area').style.display = 'block';
+                renderVault(latestVaultData);
+            }
+        } else {
+            msgBox.style.color = "#ef4444";
+            msgBox.innerText = "गलत पासवर्ड! कृपया सही पासवर्ड दर्ज करें।";
+        }
+    }
+
+    function lockSection(target) {
+        if (target === 'capsule') {
+            isCapsuleUnlocked = false;
+            document.getElementById('capsule-locked-area').style.display = 'block';
+            document.getElementById('capsule-unlocked-area').style.display = 'none';
+            document.getElementById('capsulesContainer').innerHTML = '';
+        } else if (target === 'vault') {
+            isVaultUnlocked = false;
+            document.getElementById('vault-locked-area').style.display = 'block';
+            document.getElementById('vault-unlocked-area').style.display = 'none';
+            document.getElementById('vaultContainer').innerHTML = ''; 
+        }
+    }
+
+    function deleteCapsule(id) {
+        if (confirm("क्या आप वाकई इसे हटाना चाहते हैं?")) { capsulesRef.child(id).remove(); }
+    }
+
+    function deleteVaultItem(id) {
+        if (confirm("क्या आप वाकई इसे हटाना चाहते हैं?")) { vaultRef.child(id).remove(); }
+    }
+
+    // बेहतर और पक्का कॉपी करने का फंक्शन
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("डाटा सफलतापूर्वक कॉपी हो गया है!");
+            }).catch(() => {
+                fallbackCopyText(text);
+            });
+        } else {
+            fallbackCopyText(text);
+        }
+    }
+
+    function fallbackCopyText(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";  // स्क्रीन से बाहर रखने के लिए
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert("डाटा सफलतापूर्वक कॉपी हो गया है!");
+            } else {
+                alert("कॉपी करने में असफल! कृपया मैन्युअल रूप से सेलेक्ट करके कॉपी करें।");
+            }
+        } catch (err) {
+            alert("कॉपी समर्थित नहीं है।");
+        }
+        document.body.removeChild(textArea);
+    }
+
+    capsulesRef.on('value', (snapshot) => { 
+        latestCapsuleData = snapshot.val();
+        if (isCapsuleUnlocked) renderCapsules(latestCapsuleData); 
+    });
+
+    vaultRef.on('value', (snapshot) => { 
+        latestVaultData = snapshot.val();
+        if (isVaultUnlocked) renderVault(latestVaultData); 
+    });
+
+    function renderCapsules(data) {
+        if (!isCapsuleUnlocked) return;
+        const container = document.getElementById('capsulesContainer');
+        if (!data) { container.innerHTML = '<p style="color: #64748b; font-size: 14px;">अभी कोई मैसेज नहीं है।</p>'; return; }
+
+        const capsules = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        const now = new Date().getTime();
+        container.innerHTML = '';
+
+        capsules.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const diff = item.unlockTime - now;
+            const safeText = escapeHtml(item.text);
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div style="color: #4ade80; font-weight: bold;">🔓 ${escapeHtml(item.text.substring(0, 20))}...</div>
+                    <button class="copy-btn" onclick="copyText(${JSON.stringify(item.text)})">📋 कॉपी करें</button>
+                </div>
+                <div class="unlocked-content">${safeText}</div>
+                <div class="timer">⏳ ${diff > 0 ? formatRemainingTime(diff) : 'समय पूरा हो चुका है!'}</div>
+                <button class="delete-btn" onclick="deleteCapsule('${item.id}')">हटाएं</button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function filterVaultData() {
+        renderVault(latestVaultData);
+    }
+
+    function renderVault(data) {
+        if (!isVaultUnlocked) return; 
+
+        const container = document.getElementById('vaultContainer');
+        const searchQuery = document.getElementById('searchVaultInput').value.toLowerCase().trim();
+
+        if (!data) { container.innerHTML = '<p style="color: #64748b; font-size: 14px;">अभी कोई सेव अकाउंट नहीं है।</p>'; return; }
+
+        let items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+
+        if (searchQuery !== '') {
+            items = items.filter(item => item.appName.toLowerCase().includes(searchQuery));
+        }
+
+        if (items.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; font-size: 14px;">कोई मैचिंग अकाउंट नहीं मिला।</p>';
+            return;
+        }
+
+        const now = new Date().getTime();
+        container.innerHTML = '';
+
+        items.reverse().forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const diff = item.unlockTime - now;
+            const fullDetails = `ऐप/वेबसाइट: ${item.appName}\nयूजरनेम/ईमेल: ${item.appUser}\nपासवर्ड: ${item.appPass}`;
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div style="color: #4ade80; font-weight: bold;">🔓 ${escapeHtml(item.appName)}</div>
+                    <button class="copy-btn" onclick="copyText(${JSON.stringify(fullDetails)})">📋 कॉपी करें</button>
+                </div>
+                <div class="unlocked-content">
+                    <strong>यूजरनेम/ईमेल:</strong> ${escapeHtml(item.appUser)}<br>
+                    <strong>पासवर्ड:</strong> ${escapeHtml(item.appPass)}
+                </div>
+                <div class="timer">⏳ ${diff > 0 ? formatRemainingTime(diff) : 'समय पूरा हो चुका है!'}</div>
+                <button class="delete-btn" onclick="deleteVaultItem('${item.id}')">हटाएं</button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function formatRemainingTime(ms) {
+        if (ms <= 0) return "समय समाप्त!";
+        const seconds = Math.floor((ms / 1000) % 60);
+        const minutes = Math.floor((ms / (1000 * 60)) % 60);
+        const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+        const years = Math.floor(days / 365);
+        const remDays = days % 365;
+
+        let result = [];
+        if (years > 0) result.push(`${years} साल`);
+        if (remDays > 0) result.push(`${remDays} दिन`);
+        if (hours > 0) result.push(`${hours} घंटे`);
+        if (minutes > 0) result.push(`${minutes} मिनट`);
+        result.push(`${seconds} सेकंड`);
+
+        return 'खुलने में बाकी: ' + result.join(' ');
+    }
+
+    function escapeHtml(text) {
+        return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+    }
+
+    setInterval(() => {
+        capsulesRef.once('value', s => {
+            latestCapsuleData = s.val();
+            if(isCapsuleUnlocked) renderCapsules(latestCapsuleData);
+        });
+        vaultRef.once('value', s => {
+            latestVaultData = s.val();
+            if(isVaultUnlocked) renderVault(latestVaultData);
+        });
+    }, 1000);
+</script>
+
+</body>
+</html>
